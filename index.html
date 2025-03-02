@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deal Calculator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 95%;
+            margin: 20px;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-top: 20px;
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-top: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .percentage-input {
+            width: 70px;
+        }
+
+        .result-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .input-box {
+            flex: 1 1 300px;
+            margin: 10px 0;
+        }
+
+        .result {
+            font-weight: 600;
+            background: #e7f5ff;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            margin: 5px;
+            color: #2980b9;
+        }
+
+        .alert {
+            color: #e74c3c;
+            font-weight: 600;
+            text-align: center;
+            display: block;
+            margin-top: 10px;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Deal Calculator</h2>
+        <label>Purchase Price: <input type="number" id="purchasePrice" oninput="calculate()"></label>
+        <label>SDE: <input type="number" id="sde" oninput="calculate()"></label>
+        <div class="result">Multiple: <span id="multiple"></span></div>
+
+        <div class="input-container">
+            <div class="input-box">
+                <label>Deal Costs: <input type="number" id="dealCosts" oninput="calculate()"></label>
+                <label>Bank Transaction Expenses: <input type="number" id="bankExpenses" oninput="calculate()"></label>
+                <label>Working Capital: <input type="number" id="workingCapital" oninput="calculate()"></label>
+            </div>
+            <div class="input-box">
+                <label>SBA Loan:</label>
+                <div class="input-group">
+                    <input type="number" id="sbaLoan" oninput="updatePercentage('sbaLoan'); calculateYearlyPayment()">
+                    <input type="number" id="sbaLoanPercent" class="percentage-input" oninput="updateAmount('sbaLoan'); calculateYearlyPayment()">%
+                </div>
+                <label>Seller Note:</label>
+                <div class="input-group">
+                    <input type="number" id="sellerNote" oninput="updatePercentage('sellerNote'); calculateSellerNotePayment()">
+                    <input type="number" id="sellerNotePercent" class="percentage-input" oninput="updateAmount('sellerNote'); calculateSellerNotePayment()">%
+                </div>
+                <label>Equity Injection:</label>
+                <div class="input-group">
+                    <input type="number" id="equityInjection" oninput="updatePercentage('equityInjection')">
+                    <input type="number" id="equityInjectionPercent" class="percentage-input" oninput="updateAmount('equityInjection')">%
+                </div>
+            </div>
+
+            <div class="input-box">
+                <label>SBA Loan Interest Rate (%): <input type="number" id="sbaInterestRate" value="10" oninput="calculateYearlyPayment()"></label>
+                <label>Loan Term (Years): <input type="number" id="sbaLoanTerm" value="10" oninput="calculateYearlyPayment()"></label>
+                <div class="result">Yearly SBA Loan Payment: <span id="sbaYearlyPayment"></span></div>
+            </div>
+
+            <div class="input-box">
+                <label>Seller Note Interest Rate (%): <input type="number" id="sellerNoteInterestRate" value="10" oninput="calculateSellerNotePayment()"></label>
+                <label>Seller Note Term (Years): <input type="number" id="sellerNoteTerm" value="10" oninput="calculateSellerNotePayment()"></label>
+                <div class="result">Yearly Seller Note Payment: <span id="sellerNoteYearlyPayment"></span></div>
+            </div>
+
+            <div class="input-box">
+                <div class="result">Annual Debt Service: <span id="debtService"></span></div>
+                <div class="result">DSCR: <span id="dscr"></span></div>
+            </div>
+
+        </div>
+
+        <div class="result-container">
+            <div class="result">Total Uses: <span id="totalUses"></span> <span id="usesAlert" class="alert"></span></div>
+            <div class="result">Total Sources: <span id="totalSources"></span> <span id="sourcesAlert" class="alert"></span></div>
+        </div>
+    </div>
+    
+    <script>
+        function calculate() {
+            let purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
+            let sde = parseFloat(document.getElementById('sde').value) || 1;
+            let multiple = purchasePrice / sde;
+            document.getElementById('multiple').innerText = multiple.toFixed(2);
+            
+            let dealCosts = parseFloat(document.getElementById('dealCosts').value) || 0;
+            let bankExpenses = parseFloat(document.getElementById('bankExpenses').value) || 0;
+            let workingCapital = parseFloat(document.getElementById('workingCapital').value) || 0;
+            let totalUses = purchasePrice + dealCosts + bankExpenses + workingCapital;
+            document.getElementById('totalUses').innerText = totalUses;
+            
+            updatePercentage('sbaLoan');
+            updatePercentage('sellerNote');
+            updatePercentage('equityInjection');
+        }
+
+        function updatePercentage(field) {
+            let totalUses = parseFloat(document.getElementById('totalUses').innerText) || 0;
+            let amount = parseFloat(document.getElementById(field).value) || 0;
+            let percentageField = document.getElementById(field + 'Percent');
+            if (totalUses > 0) {
+                percentageField.value = ((amount / totalUses) * 100);
+            }
+            updateTotalSources();
+        }
+
+        function updateAmount(field) {
+            let totalUses = parseFloat(document.getElementById('totalUses').innerText) || 0;
+            let percentage = parseFloat(document.getElementById(field + 'Percent').value) || 0;
+            let amountField = document.getElementById(field);
+            amountField.value = ((percentage / 100) * totalUses);
+            updateTotalSources();
+        }
+
+        function updateTotalSources() {
+            let sbaLoan = parseFloat(document.getElementById('sbaLoan').value) || 0;
+            let sellerNote = parseFloat(document.getElementById('sellerNote').value) || 0;
+            let equityInjection = parseFloat(document.getElementById('equityInjection').value) || 0;
+            let totalSources = sbaLoan + sellerNote + equityInjection;
+            document.getElementById('totalSources').innerText = totalSources;
+        }
+    
+        function calculateYearlyPayment() {
+            let sbaLoan = parseFloat(document.getElementById('sbaLoan').value) || 0;
+            let annualInterestRate = parseFloat(document.getElementById('sbaInterestRate').value) / 100 || 0.1;
+            let loanTermYears = parseFloat(document.getElementById('sbaLoanTerm').value) || 10;
+            
+            let monthlyInterestRate = annualInterestRate / 12;
+            let totalMonths = loanTermYears * 12;
+            
+            if (sbaLoan > 0 && annualInterestRate > 0 && loanTermYears > 0) {
+                let yearlyPayment = (sbaLoan * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalMonths)) * 12;
+                document.getElementById('sbaYearlyPayment').innerText = yearlyPayment.toFixed(0);
+            } else {
+                document.getElementById('sbaYearlyPayment').innerText = "0.00";
+            }
+            calculateDebtService();
+        }
+    
+        function calculateSellerNotePayment() {
+            let sellerNote = parseFloat(document.getElementById('sellerNote').value) || 0;
+            let annualInterestRate = parseFloat(document.getElementById('sellerNoteInterestRate').value) / 100 || 0.1;
+            let loanTermYears = parseFloat(document.getElementById('sellerNoteTerm').value) || 10;
+            
+            let monthlyInterestRate = annualInterestRate / 12;
+            let totalMonths = loanTermYears * 12;
+            
+            if (sellerNote > 0 && annualInterestRate > 0 && loanTermYears > 0) {
+                let yearlyPayment = (sellerNote * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalMonths)) * 12;
+                document.getElementById('sellerNoteYearlyPayment').innerText = yearlyPayment.toFixed(0);
+            } else {
+                document.getElementById('sellerNoteYearlyPayment').innerText = "0.00";
+            }
+            calculateDebtService();
+        }
+    
+        function calculateDebtService() {
+            let sbaYearlyPayment = parseFloat(document.getElementById('sbaYearlyPayment').innerText) || 0;
+            let sellerNoteYearlyPayment = parseFloat(document.getElementById('sellerNoteYearlyPayment').innerText) || 0;
+            let debtService = sbaYearlyPayment + sellerNoteYearlyPayment;
+            document.getElementById('debtService').innerText = debtService;
+            calculateDSCR();
+        }
+
+        function calculateDSCR() {
+            let sde = parseFloat(document.getElementById('sde').value) || 0;
+            let debtService = parseFloat(document.getElementById('debtService').innerText) || 0;
+            let dscr = debtService > 0 ? sde / debtService : 0;
+            document.getElementById('dscr').innerText = dscr.toFixed(2);
+        }
+    </script>
+</body>
+</html>
